@@ -1,21 +1,44 @@
-# Registry of detectors
+# goldreg-R76
 
-The facts about the detectors that the analysis needs and the library must not contain: a detector's number, type, readout and
-where each named channel is wired in a given file format. Read by `goldpan.registry` (specification in its docstring).
+The detector registry of the **Run 76** analysis (SuperCDMS-type NaI array, Side-2 readout; the series `07221203_2025`).
 
-- One or more `*.toml` files: `run76.toml` (detectors) and `readouts.toml` (the readouts, with the evidence for each number). Every entry has a `status` (`confirmed` or `inferred`) and `evidence` that says where it comes from.
-- A dataset definition names this folder with `[dataset] registry = ["../registry"]` (relative to the definition file), or the
-  environment variable `GOLDPAN_REGISTRY` lists folders. Anything the definition file writes itself wins over the registry.
-- This folder is **data, not library code**, and nothing in goldpan or goldsluice (their own repositories) contains or depends on it. It is laid out so that it
-  can move to a repository of its own (or be replaced by a database behind the same `goldpan.registry` interface) without a change
-  to the library.
-- A name may be defined once. To add a detector, add a table to a file here (or a new file) and run
-  `python -m pytest tests/test_registry_data.py`.
-  A program can add a record instead of an editor: `goldpan.registry.add_record(folder, "detectors", name, table)` checks it as the reader does and
-  appends it to `detectors.toml` without touching the rest of the file (write `confirmed` only for what a file or a document says).
+It holds the facts about the detectors that the analysis needs and that [goldpan](https://github.com/villano-lab/goldpan) must not contain: a detector's number, type, readout and where each named channel is wired in a given file format. It is **data, not code**: goldpan and [goldsluice](https://github.com/villano-lab/goldsluice) read it (`goldpan.registry`, specification in its docstring) and nothing in them depends on it.
 
-For a MIDAS file, `goldpan.adapters.midas.detectors(path)` returns what the file's ODB says about each detector and
-`goldpan.adapters.midas.registry_entry(detector)` writes a starting entry from it; `goldpan.registry.compare` checks a record
-against what a file says.
+| File | What it holds |
+|---|---|
+| `run76.toml` | the detectors (`NAI-S2`) with their channel map for idx files |
+| `readouts.toml` | the readouts, with the evidence for each number (`DCRC_RUN76`; the `Z7` record stays here until `goldreg-Z7` exists) |
 
-Issue 150 has the design.
+Every entry has a `status` (`confirmed` or `inferred`) and `evidence` that says where it comes from. Write `confirmed` only for what a file or a document says; never write a guess as `confirmed`. A name is defined once.
+
+## Using it
+
+Give the folder to goldpan in one of two ways:
+
+- in a dataset definition: `[dataset] registry = ["../goldreg-R76"]` (relative to the definition file);
+- or set the environment variable `GOLDPAN_REGISTRY` to the folder.
+
+```python
+from goldpan import registry
+
+reg = registry.load("~/goldreg-R76")
+config = reg.readout_config("DCRC_RUN76")        # a goldpan.config.PulseConfig
+```
+
+Anything a definition file writes itself wins over the registry.
+
+## Changing it
+
+Work as in [`CONTRIBUTING.md`](CONTRIBUTING.md): a branch from `develop` and a pull request. Edit the TOML by hand, or let a program add a record: `goldpan.registry.add_record(folder, "detectors", name, table)` checks it as the reader does and appends it without touching the rest of the file. Then run
+
+```
+python -m pytest
+```
+
+For a MIDAS file, `goldpan.adapters.midas.detectors(path)` returns what the file's ODB says about each detector, and `goldpan.registry.compare` checks a record against it.
+
+A change to a number that results depend on (a pretrigger window, a sample period) is announced in [`CHANGELOG.md`](CHANGELOG.md): outputs made with the old value differ and should be made again.
+
+## History
+
+Until 2026-11-05 this was the folder `registry/` of [NSDF-Data](https://github.com/villano-lab/NSDF-Data); its history is kept here. The design is in goldpan issue 150 and in the NSDF-Data task list (item 70): one registry per analysis, `goldreg-R76` and `goldreg-Z7`; a detector is shared by copying its record with `copied_from = "goldreg-R76@<commit>"` next to its `evidence`.
