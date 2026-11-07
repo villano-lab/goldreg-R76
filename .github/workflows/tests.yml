@@ -1,0 +1,42 @@
+name: tests
+
+# Checks that the registry is valid: the released goldpan reads it and every record says where it comes from.
+# Runs on Linux, Windows and macOS. A weekly run tells when a new goldpan release stops reading this data.
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install goldpan (released) and pytest
+        run: |
+          python -m pip install goldpan pytest
+          python -m pip list
+
+      - name: Tests
+        run: python -m pytest -q -rs
